@@ -1,0 +1,12 @@
+@font-face {
+  font-family: 'Playwrite Regular';
+  src: url('/PlaywrightRegular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  font-family: "Playwrite Regular", cursive;
+  font-optical-sizing: auto;
+  font-style: normal;
+}

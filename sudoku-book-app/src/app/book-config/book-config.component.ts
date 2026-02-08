@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -16,6 +16,15 @@ import { PdfGeneratorService, BookConfig, PuzzleData } from '../services/pdf-gen
       <div class="row">
         <div class="col">
           <div class="form-group">
+            <label>Language / Idioma</label>
+            <select [(ngModel)]="config.language">
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-group">
             <label>Trim Size</label>
             <select [(ngModel)]="config.trimSize">
               <option value="6x9">6" x 9"</option>
@@ -23,6 +32,9 @@ import { PdfGeneratorService, BookConfig, PuzzleData } from '../services/pdf-gen
             </select>
           </div>
         </div>
+      </div>
+      
+      <div class="row">
          <div class="col">
            <div class="form-group">
             <label>Puzzles Per Page</label>
@@ -34,6 +46,7 @@ import { PdfGeneratorService, BookConfig, PuzzleData } from '../services/pdf-gen
             </select>
           </div>
         </div>
+         <div class="col"></div>
       </div>
 
       <div class="counts-group">
@@ -115,7 +128,8 @@ export class BookConfigComponent implements OnInit {
     mediumCount: 10,
     hardCount: 10,
     puzzlesPerPage: 2,
-    infoContent: ''
+    infoContent: '',
+    language: 'es'
   };
   
   isGenerating = false;
@@ -129,8 +143,8 @@ export class BookConfigComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Try to load default info.md
-    fetch('assets/info.md')
+    // Try to load default info.md from public folder
+    fetch('/info.md')
       .then(response => {
         if (response.ok) return response.text();
         return '';

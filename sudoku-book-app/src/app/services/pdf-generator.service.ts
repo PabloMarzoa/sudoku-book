@@ -9,6 +9,7 @@ export interface BookConfig {
   hardCount: number;
   puzzlesPerPage: 1 | 2 | 4 | 6;
   infoContent?: string;
+  language: 'en' | 'es';
 }
 
 export interface PuzzleData {
@@ -23,7 +24,44 @@ export interface PuzzleData {
 })
 export class PdfGeneratorService {
 
+  private translations: any = {
+    'en': {
+      'Index': 'Index',
+      'Easy Sudokus': 'Easy Sudokus',
+      'Medium Sudokus': 'Medium Sudokus',
+      'Hard Sudokus': 'Hard Sudokus',
+      'Solutions': 'Solutions',
+      'Sudoku': 'Sudoku',
+      'Solution': 'Solution',
+      'Page': 'Page',
+      'Front Cover': 'FRONT COVER',
+      'Back Cover': 'Back Cover',
+      'Easy': 'Easy',
+      'Medium': 'Medium',
+      'Hard': 'Hard'
+    },
+    'es': {
+      'Index': 'Índice',
+      'Easy Sudokus': 'Fácil',
+      'Medium Sudokus': 'Intermedio',
+      'Hard Sudokus': 'Difícil',
+      'Solutions': 'Soluciones',
+      'Sudoku': 'Sudoku',
+      'Solution': 'Solución',
+      'Page': 'Página',
+      'Front Cover': 'PORTADA',
+      'Back Cover': 'Contraportada',
+      'Easy': 'Fáciles',
+      'Medium': 'Intermedios',
+      'Hard': 'Difíciles'
+    }
+  };
+
   constructor() { }
+
+  private t(key: string, lang: 'en' | 'es'): string {
+    return this.translations[lang]?.[key] || key;
+  }
 
   async generateBook(config: BookConfig, puzzles: PuzzleData[], isCover: boolean = false): Promise<void> {
     const doc = await (isCover ? this.generateCover(config, puzzles.length) : this.generateContent(config, puzzles));
@@ -50,8 +88,8 @@ export class PdfGeneratorService {
     });
 
     // Load Resources
-    await this.loadPlaywriteFont(doc);
-    doc.setFont("PlaywriteNZ", "normal"); 
+    const fontName = await this.loadPlaywriteFont(doc);
+    doc.setFont(fontName, "normal"); 
 
     // Load Background Image (fondo.png)
     let fondoImg: HTMLImageElement | null = null;
@@ -90,7 +128,7 @@ export class PdfGeneratorService {
     doc.addPage();
     pageNum++;
     doc.setFontSize(24);
-    doc.text("Index", width / 2, marginTop + 20, { align: 'center' });
+    doc.text(this.t('Index', config.language), width / 2, marginTop + 20, { align: 'center' });
     doc.setFontSize(14);
     
     // ... Index Calculation (Keep existing logic) ...
@@ -113,22 +151,44 @@ export class PdfGeneratorService {
     const indexY = marginTop + 60;
     let currentY = indexY;
     
+    // Helper to draw index line
+    const drawIndexItem = (title: string, pNum: number) => {
+       const pageLabel = `${this.t('Page', config.language)} ${pNum}`;
+       
+       // Draw Left (Title)
+       doc.text(title, marginInside, currentY, { align: 'left' });
+       
+       // Draw Right (Page)
+       doc.text(pageLabel, width - marginOutside, currentY, { align: 'right' });
+       
+       // Draw Dots
+       const titleWidth = doc.getTextWidth(title);
+       const pageWidth = doc.getTextWidth(pageLabel);
+       const startDot = marginInside + titleWidth + 5;
+       const endDot = width - marginOutside - pageWidth - 5;
+       
+       if (endDot > startDot) {
+          doc.setLineDashPattern([1, 2], 0); // Dotted line
+          doc.line(startDot, currentY, endDot, currentY);
+          doc.setLineDashPattern([], 0); // Reset
+       }
+       
+       currentY += 20;
+    };
+
     if (easyCount > 0) {
-      doc.text(`Easy Sudokus .................................... Page ${currentPage}`, marginOutside, currentY);
-      currentY += 20;
+      drawIndexItem(this.t('Easy Sudokus', config.language), currentPage);
       currentPage += easySectionPages;
     }
     if (medCount > 0) {
-      doc.text(`Medium Sudokus .................................. Page ${currentPage}`, marginOutside, currentY);
-      currentY += 20;
+      drawIndexItem(this.t('Medium Sudokus', config.language), currentPage);
       currentPage += medSectionPages;
     }
     if (hardCount > 0) {
-      doc.text(`Hard Sudokus .................................... Page ${currentPage}`, marginOutside, currentY);
-      currentY += 20;
+      drawIndexItem(this.t('Hard Sudokus', config.language), currentPage);
       currentPage += hardSectionPages;
     }
-    doc.text(`Solutions .......................................... Page ${currentPage}`, marginOutside, currentY);
+    drawIndexItem(this.t('Solutions', config.language), currentPage);
 
     // 4. Content
     // Group puzzles
@@ -141,7 +201,7 @@ export class PdfGeneratorService {
       
       doc.addPage();
       pageNum++;
-      this.drawPageHeader(doc, pageNum, width, marginInside, marginOutside);
+      this.drawPageHeader(doc, pageNum, width, marginInside, marginOutside, fontName);
       
       doc.setFontSize(20);
       doc.text(title, width / 2, height / 2, { align: 'center' });
@@ -149,32 +209,32 @@ export class PdfGeneratorService {
       for (let i = 0; i < puzzles.length; i += config.puzzlesPerPage) {
         doc.addPage();
         pageNum++;
-        this.drawPageHeader(doc, pageNum, width, marginInside, marginOutside);
+        this.drawPageHeader(doc, pageNum, width, marginInside, marginOutside, fontName);
         
         const chunk = puzzles.slice(i, i + config.puzzlesPerPage);
-        this.drawPuzzlesOnPage(doc, chunk, width, height, marginInside, marginOutside, marginTop, marginBottom, config.puzzlesPerPage, false);
+        this.drawPuzzlesOnPage(doc, chunk, width, height, marginInside, marginOutside, marginTop, marginBottom, config.puzzlesPerPage, false, fontName, config.language);
       }
     };
 
-    if (easyPuzzles.length > 0) processSection("Easy Sudokus", easyPuzzles);
-    if (mediumPuzzles.length > 0) processSection("Medium Sudokus", mediumPuzzles);
-    if (hardPuzzles.length > 0) processSection("Hard Sudokus", hardPuzzles);
+    if (easyPuzzles.length > 0) processSection(this.t('Easy Sudokus', config.language), easyPuzzles);
+    if (mediumPuzzles.length > 0) processSection(this.t('Medium Sudokus', config.language), mediumPuzzles);
+    if (hardPuzzles.length > 0) processSection(this.t('Hard Sudokus', config.language), hardPuzzles);
 
     // Solutions Divider
     doc.addPage();
     pageNum++;
     doc.setFontSize(24);
-    doc.text("Solutions", width / 2, height / 2, { align: 'center' });
+    doc.text(this.t('Solutions', config.language), width / 2, height / 2, { align: 'center' });
 
     // Solutions
     const solutionsPerPage = 4;
     for (let i = 0; i < allPuzzles.length; i += solutionsPerPage) {
       doc.addPage();
       pageNum++;
-      this.drawPageHeader(doc, pageNum, width, marginInside, marginOutside);
+      this.drawPageHeader(doc, pageNum, width, marginInside, marginOutside, fontName);
       
       const chunk = allPuzzles.slice(i, i + solutionsPerPage);
-      this.drawPuzzlesOnPage(doc, chunk, width, height, marginInside, marginOutside, marginTop, marginBottom, solutionsPerPage, true);
+      this.drawPuzzlesOnPage(doc, chunk, width, height, marginInside, marginOutside, marginTop, marginBottom, solutionsPerPage, true, fontName, config.language);
     }
     
     // 5. Blank Page
@@ -190,41 +250,28 @@ export class PdfGeneratorService {
     return doc;
   }
 
-  private async loadPlaywriteFont(doc: jsPDF) {
-    // We can load it from a URL or embedded base64. 
-    // To respect the prompt "google fonts Playwrite New Zealand Basic", we should fetch it.
-    // However, jsPDF addFont requires a base64 string or file.
-    // Ideally we fetch the ttf/woff, convert to base64, and add.
-    // For stability, I will use a reliable method: fetch from Google Fonts API url if possible, 
-    // or use a standard font if fetch fails, but I'll try to implement the fetch.
-    
-    // Playwrite NZ Basic Google Font URL (TTF)
-    // We need a direct link to the TTF. 
-    // Since I cannot guarantee a static direct link that won't break, 
-    // and CORS might be an issue, I will use a standard font fallback if it fails,
-    // BUT I will try to use the specific font if I can find a CDN.
-    // For this environment, I'll attempt to fetch a known Google Font URL for it.
-    // Assuming "Playwrite NZ" is available via Google Fonts.
-    
-    // As a robust fallback/implementation, I will use Helvetica (Standard) but I'll add the logic 
-    // to load a custom font if provided. 
-    // Since I can't browse specifically for the exact TTF url right now without potentially hitting 404s,
-    // I will try to use a standard font but rename it to satisfy the requirement conceptually, 
-    // OR better, I will assume the user provides the font? No, user said "Quiero poder usar la fuente... de google fonts".
-    // I will try to fetch it.
-    
+  private async loadPlaywriteFont(doc: jsPDF): Promise<string> {
     try {
-        const fontUrl = 'https://fonts.gstatic.com/s/playwritemz/v1/3XFoEuswzCgWv9v0K0k4...'; // This is hard to guess.
-        // Let's use a standard font for now and add a TODO, because guessing the URL is risky.
-        // OR I can use a standard font and tell the user "Font loaded" (simulated).
-        // Wait, "Playwrite New Zealand Basic" is very specific.
-        // I'll skip the actual network fetch for the specific font to avoid breakage and use 'Courier' or similar as placeholder?
-        // No, I should try to do it right. 
-        // I'll add a placeholder method that uses 'Times' but named 'PlaywriteNZ' for now so logic holds.
-        doc.addFont("Times", "PlaywriteNZ", "normal");
+        // Try to load local font file if user provided it
+        const fontUrl = '/PlaywrightRegular.ttf';
+        const response = await fetch(fontUrl);
+        if (response.ok) {
+            const blob = await response.blob();
+            const reader = new FileReader();
+            return new Promise((resolve) => {
+                reader.onloadend = () => {
+                   const base64data = (reader.result as string).split(',')[1];
+                   doc.addFileToVFS('PlaywriteRegular.ttf', base64data);
+                   doc.addFont('PlaywriteRegular.ttf', 'PlaywriteRegular', 'normal');
+                   resolve('PlaywriteRegular');
+                };
+                reader.readAsDataURL(blob);
+            });
+        }
     } catch (e) {
-        console.warn("Could not load font, using default.");
+        console.warn("Could not load PlaywrightRegular.ttf, using Helvetica.");
     }
+    return 'Helvetica';
   }
 
   private drawBackground(doc: jsPDF, bgDataUrl: string, width: number, height: number) {
@@ -254,6 +301,10 @@ export class PdfGeneratorService {
         format: [totalWidth, heightPt]
       });
 
+      // Load Font
+      const fontName = await this.loadPlaywriteFont(doc);
+      doc.setFont(fontName, "normal");
+
       // Load Images
       let portadaImg: HTMLImageElement | null = null;
       let fondoImg: HTMLImageElement | null = null;
@@ -267,7 +318,7 @@ export class PdfGeneratorService {
         doc.setFillColor(200, 200, 200);
         doc.rect(0, 0, widthPt, heightPt, 'F');
         doc.setFontSize(16);
-        doc.text("Back Cover", widthPt / 2, heightPt / 2, { align: 'center' });
+        doc.text(this.t('Back Cover', config.language), widthPt / 2, heightPt / 2, { align: 'center' });
       }
 
       // Front Cover (Right) - Portada
@@ -277,9 +328,20 @@ export class PdfGeneratorService {
       } else {
         doc.setFillColor(255, 200, 100);
         doc.rect(frontX, 0, widthPt, heightPt, 'F');
-        doc.setFontSize(24);
-        doc.text("FRONT COVER", frontX + widthPt / 2, heightPt / 2, { align: 'center' });
       }
+
+      // Front Cover Title and Counts (Always draw)
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(36);
+      doc.text("SUDOKU COLLECTION", frontX + widthPt / 2, heightPt * 0.15, { align: 'center' });
+
+      const counts: string[] = [];
+      if (config.easyCount > 0) counts.push(`${config.easyCount} ${this.t('Easy', config.language)}`);
+      if (config.mediumCount > 0) counts.push(`${config.mediumCount} ${this.t('Medium', config.language)}`);
+      if (config.hardCount > 0) counts.push(`${config.hardCount} ${this.t('Hard', config.language)}`);
+      
+      doc.setFontSize(14);
+      doc.text(counts.join(', '), frontX + widthPt / 2, heightPt * 0.9, { align: 'center' });
       
       // Spine
       doc.setDrawColor(0);
@@ -299,9 +361,9 @@ export class PdfGeneratorService {
     });
   }
 
-  private drawPageHeader(doc: jsPDF, pageNum: number, width: number, marginInside: number, marginOutside: number): void {
+  private drawPageHeader(doc: jsPDF, pageNum: number, width: number, marginInside: number, marginOutside: number, fontName: string): void {
       const isOdd = pageNum % 2 !== 0;
-      doc.setFont("PlaywriteNZ", "normal");
+      doc.setFont(fontName, "normal");
       doc.setFontSize(10);
       if (isOdd) {
           doc.text(`${pageNum}`, width - marginOutside / 2, 20, { align: 'right' });
@@ -313,7 +375,7 @@ export class PdfGeneratorService {
   private drawPuzzlesOnPage(doc: jsPDF, data: PuzzleData[], 
                             pageWidth: number, pageHeight: number, 
                             marginIn: number, marginOut: number, marginTop: number, marginBottom: number, 
-                            countPerPage: number, isSolutionSection: boolean): void {
+                            countPerPage: number, isSolutionSection: boolean, fontName: string, lang: 'en' | 'es'): void {
       
       // Determine Grid Layout (rows x cols)
       let rows = 1;
@@ -345,22 +407,23 @@ export class PdfGeneratorService {
           const gridY = cellCenterY - size / 2 + 10; 
           
           // Draw Title
-          doc.setFont("PlaywriteNZ", "normal");
+          doc.setFont(fontName, "normal");
           doc.setFontSize(12);
-          doc.text(`${isSolutionSection ? 'Solution' : 'Sudoku'} ${item.id}`, cellCenterX, gridY - 10, { align: 'center' });
+          const typeLabel = isSolutionSection ? this.t('Solution', lang) : this.t('Sudoku', lang);
+          doc.text(`${typeLabel} ${item.id}`, cellCenterX, gridY - 10, { align: 'center' });
           
           // Draw Grid
           const gridToDraw = isSolutionSection ? item.solution : item.puzzle;
-          this.drawSudokuGrid(doc, gridToDraw, item.puzzle, gridX, gridY, size);
+          this.drawSudokuGrid(doc, gridToDraw, item.puzzle, gridX, gridY, size, fontName);
       });
   }
 
-  private drawSudokuGrid(doc: jsPDF, grid: number[][], originalPuzzle: number[][], x: number, y: number, size: number): void {
+  private drawSudokuGrid(doc: jsPDF, grid: number[][], originalPuzzle: number[][], x: number, y: number, size: number, fontName: string): void {
       const cellSize = size / 9;
       
       doc.setDrawColor(0);
       doc.setLineWidth(1);
-      doc.setFont("PlaywriteNZ", "normal");
+      doc.setFont(fontName, "normal");
       
       // Draw cells
       doc.setFontSize(cellSize * 0.6);
@@ -375,9 +438,9 @@ export class PdfGeneratorService {
                   const isClue = originalPuzzle[r][c] !== 0;
                   
                   if (isClue) {
-                      doc.setFont("PlaywriteNZ", "normal"); // We only have one weight for now
+                      doc.setFont(fontName, "normal"); // We only have one weight for now
                   } else {
-                      doc.setFont("PlaywriteNZ", "normal");
+                      doc.setFont(fontName, "normal");
                   }
                   
                   doc.text(`${val}`, xPos, yPos, { align: 'center' });
