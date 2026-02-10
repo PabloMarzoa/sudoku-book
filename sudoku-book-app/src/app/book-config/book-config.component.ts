@@ -1,4 +1,4 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -139,7 +139,8 @@ export class BookConfigComponent implements OnInit {
   constructor(
     private sudokuService: SudokuGenService,
     private pdfService: PdfGeneratorService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cd: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -150,7 +151,10 @@ export class BookConfigComponent implements OnInit {
         return '';
       })
       .then(text => {
-        if (text) this.config.infoContent = text;
+        if (text) {
+           this.config.infoContent = text;
+           this.cd.detectChanges();
+        }
       })
       .catch(e => console.log('No default info.html found'));
   }
@@ -161,6 +165,7 @@ export class BookConfigComponent implements OnInit {
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.config.infoContent = e.target.result;
+        this.cd.detectChanges();
       };
       reader.readAsText(file);
     }
@@ -178,16 +183,21 @@ export class BookConfigComponent implements OnInit {
       
       this.statusMessage = isCover ? 'Creating Cover PDF...' : 'Creating Content PDF...';
       await new Promise(r => setTimeout(r, 50));
+      this.cd.detectChanges();
 
       await this.pdfService.generateBook(this.config, puzzles, isCover);
       this.statusMessage = 'Download Started!';
-      setTimeout(() => this.statusMessage = '', 3000);
+      setTimeout(() => {
+        this.statusMessage = '';
+        this.cd.detectChanges();
+      }, 3000);
       
     } catch (e) {
       console.error(e);
       this.statusMessage = 'Error generating book.';
     } finally {
       this.isGenerating = false;
+      this.cd.detectChanges();
     }
   }
 
@@ -197,23 +207,29 @@ export class BookConfigComponent implements OnInit {
     
     // Must yield to let UI update
     await new Promise(r => setTimeout(r, 50));
+    this.cd.detectChanges();
 
     try {
       const puzzles = await this.generateAllPuzzles();
       
       this.statusMessage = 'Rendering PDF...';
       await new Promise(r => setTimeout(r, 50));
+      this.cd.detectChanges();
       
       const url = await this.pdfService.getPreviewUrl(this.config, puzzles, false);
       this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
       this.statusMessage = 'Preview Ready!';
-      setTimeout(() => this.statusMessage = '', 3000);
+      setTimeout(() => {
+         this.statusMessage = '';
+         this.cd.detectChanges();
+      }, 3000);
 
     } catch (e) {
       console.error(e);
       this.statusMessage = 'Error generating preview.';
     } finally {
       this.isGenerating = false;
+      this.cd.detectChanges();
     }
   }
 
@@ -227,6 +243,7 @@ export class BookConfigComponent implements OnInit {
         // Yield every few puzzles to keep UI responsive
         if (i % 5 === 0) {
           this.statusMessage = `Generating ${difficultyName} puzzles (${i + 1}/${count})...`;
+          this.cd.detectChanges(); 
           await new Promise(r => setTimeout(r, 0)); 
         }
 
