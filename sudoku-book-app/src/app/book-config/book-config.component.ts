@@ -180,13 +180,14 @@ export class BookConfigComponent implements OnInit {
       await new Promise(r => setTimeout(r, 50));
 
       await this.pdfService.generateBook(this.config, puzzles, isCover);
-      this.isGenerating = false;
       this.statusMessage = 'Download Started!';
+      setTimeout(() => this.statusMessage = '', 3000);
       
     } catch (e) {
       console.error(e);
-      this.isGenerating = false;
       this.statusMessage = 'Error generating book.';
+    } finally {
+      this.isGenerating = false;
     }
   }
 
@@ -205,13 +206,14 @@ export class BookConfigComponent implements OnInit {
       
       const url = await this.pdfService.getPreviewUrl(this.config, puzzles, false);
       this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-      this.isGenerating = false;
       this.statusMessage = 'Preview Ready!';
+      setTimeout(() => this.statusMessage = '', 3000);
 
     } catch (e) {
       console.error(e);
-      this.isGenerating = false;
       this.statusMessage = 'Error generating preview.';
+    } finally {
+      this.isGenerating = false;
     }
   }
 

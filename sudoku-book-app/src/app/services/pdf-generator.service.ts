@@ -169,10 +169,10 @@ export class PdfGeneratorService {
 
     const width = format[0];
     const height = format[1];
-    const marginInside = 36 + 10;
-    const marginOutside = 36;
-    const marginTop = 36;
-    const marginBottom = 36;
+    const marginInside = 54 + 10; // ~0.9 inch gutter
+    const marginOutside = 54; // 0.75 inch
+    const marginTop = 54;     // 0.75 inch
+    const marginBottom = 54;  // 0.75 inch
 
     let pageNum = 1;
 
@@ -196,6 +196,12 @@ export class PdfGeneratorService {
        const maxWidth = width - marginInside - marginOutside;
 
        nodes.forEach((node) => {
+           // Handle BR tags for line breaks
+           if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === 'BR') {
+               y += 18; 
+               return;
+           }
+
            // Skip empty text nodes
            if (node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()) return;
 
@@ -356,9 +362,8 @@ export class PdfGeneratorService {
       this.drawPuzzlesOnPage(doc, chunk, width, height, marginInside, marginOutside, marginTop, marginBottom, solutionsPerPage, true, fontName, config.language);
     }
     
-    // 5. Blank Page
-    doc.addPage();
-    // No content
+    // 5. Blank Page (Removed)
+    // doc.addPage();
     
     // 6. Closing Page (Fondo)
     doc.addPage();
@@ -542,7 +547,7 @@ export class PdfGeneratorService {
       
       doc.setDrawColor(0);
       doc.setLineWidth(1);
-      doc.setFont(fontName, "normal");
+      // We use Helvetica for numbers as requested
       
       // Draw cells
       doc.setFontSize(cellSize * 0.6);
@@ -552,14 +557,14 @@ export class PdfGeneratorService {
               const val = grid[r][c];
               if (val !== 0) {
                   const xPos = x + c * cellSize + cellSize / 2;
-                  const yPos = y + r * cellSize + cellSize / 2 + (cellSize * 0.2); 
+                  const yPos = y + r * cellSize + cellSize / 2 + (cellSize * 0.25); // Adjusted baseline for Helvetica
                   
                   const isClue = originalPuzzle[r][c] !== 0;
                   
                   if (isClue) {
-                      doc.setFont(fontName, "normal"); // We only have one weight for now
+                      doc.setFont('Helvetica', 'bold');
                   } else {
-                      doc.setFont(fontName, "normal");
+                      doc.setFont('Helvetica', 'normal');
                   }
                   
                   doc.text(`${val}`, xPos, yPos, { align: 'center' });
