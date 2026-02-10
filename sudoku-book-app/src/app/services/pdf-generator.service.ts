@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { jsPDF } from 'jspdf';
+import { marked } from 'marked';
 import { SudokuGenService } from './sudoku-gen.service';
 
 export interface BookConfig {
@@ -119,14 +120,65 @@ export class PdfGeneratorService {
     doc.addPage();
     pageNum++;
     if (config.infoContent) {
-      doc.setFontSize(12);
-      const splitText = doc.splitTextToSize(config.infoContent, width - marginInside - marginOutside);
-      doc.text(splitText, marginOutside, marginTop);
+       const parser = new DOMParser();
+       const htmlDoc = parser.parseFromString(config.infoContent, 'text/html');
+       // Get all child nodes to include text not wrapped in tags
+       const nodes = Array.from(htmlDoc.body.childNodes);
+       
+       let y = marginTop;
+       const maxWidth = width - marginInside - marginOutside;
+
+       nodes.forEach((node) => {
+           // Skip empty text nodes
+           if (node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()) return;
+
+           let text = node.textContent?.trim() || '';
+           if (!text) return;
+
+           let fontSize = 12;
+           let lineHeightFactor = 1.15; // default jsPDF spacing is roughly this
+           let marginBottom = 12;
+           
+           // Determine style based on tag
+           if (node.nodeType === Node.ELEMENT_NODE) {
+               const el = node as Element;
+               if (el.tagName === 'H1') {
+                   fontSize = 24;
+                   marginBottom = 24;
+               } else if (el.tagName === 'H2') {
+                   fontSize = 18;
+                   marginBottom = 18;
+               }
+           }
+
+           doc.setFontSize(fontSize);
+           doc.setTextColor(0, 0, 0);
+           
+           const splitText = doc.splitTextToSize(text, maxWidth);
+           /* 
+             Calculate height:
+             splitText is array of strings.
+             jsPDF default line height factor is 1.15.
+             Height = fontSize * 1.15 * lines.
+           */
+           const blockHeight = splitText.length * fontSize * lineHeightFactor;
+
+           // Page Break Check
+           if (y + blockHeight > height - marginBottom) {
+               doc.addPage();
+               pageNum++;
+               y = marginTop;
+           }
+
+           doc.text(splitText, marginInside, y);
+           y += blockHeight + marginBottom;
+       });
     }
     
     // 3. Index
     doc.addPage();
     pageNum++;
+    doc.setFont(fontName, "normal");
     doc.setFontSize(24);
     doc.text(this.t('Index', config.language), width / 2, marginTop + 20, { align: 'center' });
     doc.setFontSize(14);

@@ -143,8 +143,8 @@ export class BookConfigComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Try to load default info.md from public folder
-    fetch('/info.md')
+    // Try to load default info.html from public folder
+    fetch('/info.html')
       .then(response => {
         if (response.ok) return response.text();
         return '';
@@ -152,7 +152,7 @@ export class BookConfigComponent implements OnInit {
       .then(text => {
         if (text) this.config.infoContent = text;
       })
-      .catch(e => console.log('No default info.md found'));
+      .catch(e => console.log('No default info.html found'));
   }
 
   onInfoSelected(event: any) {
