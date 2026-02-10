@@ -62,7 +62,7 @@ import { PdfGeneratorService, BookConfig, PuzzleData } from '../services/pdf-gen
          <label>Info Page Content (Markdown/Text)</label>
          <div class="row">
             <input type="file" (change)="onInfoSelected($event)" accept=".md,.txt">
-            <textarea [(ngModel)]="config.infoContent" rows="3" placeholder="Or type text here..."></textarea>
+            <textarea [(ngModel)]="config.infoContent" rows="20" placeholder="Or type text here..."></textarea>
          </div>
       </div>
 

@@ -70,17 +70,19 @@ export class PdfGeneratorService {
   }
 
   async getPreviewUrl(config: BookConfig, puzzles: PuzzleData[], isCover: boolean = false): Promise<string> {
-    const doc = await (isCover ? this.generateCover(config, puzzles.length) : this.generateContent(config, puzzles));
+    const doc = await (isCover ? this.generateCover(config, puzzles.length) : this.generateFullBook(config, puzzles));
     return doc.output('bloburl').toString();
   }
 
-  private async generateContent(config: BookConfig, allPuzzles: PuzzleData[]): Promise<jsPDF> {
+  private async generateFullBook(config: BookConfig, puzzles: PuzzleData[]): Promise<jsPDF> {
     let format: [number, number];
     if (config.trimSize === '6x9') {
       format = [6 * 72, 9 * 72];
     } else {
       format = [8.5 * 72, 11 * 72];
     }
+    const width = format[0];
+    const height = format[1];
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -92,13 +94,78 @@ export class PdfGeneratorService {
     const fontName = await this.loadPlaywriteFont(doc);
     doc.setFont(fontName, "normal"); 
 
+    let portadaImg: HTMLImageElement | null = null;
+    let fondoImg: HTMLImageElement | null = null;
+    try { portadaImg = await this.loadImage('/portada.png'); } catch (e) { }
+    try { fondoImg = await this.loadImage('/fondo.png'); } catch (e) { }
+
+    // 1. Front Cover (Page 1)
+    if (portadaImg) {
+      doc.addImage(portadaImg, 'PNG', 0, 0, width, height);
+    } else {
+      doc.setFillColor(255, 200, 100);
+      doc.rect(0, 0, width, height, 'F');
+    }
+    
+    // Draw Title and Counts (Same as generateCover but adapted coordinates)
+    // In generateCover, frontX is start of front cover. Here X=0.
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(36);
+    doc.text("SUDOKU COLLECTION", width / 2, height * 0.15, { align: 'center' });
+
+    const counts: string[] = [];
+    if (config.easyCount > 0) counts.push(`${config.easyCount} ${this.t('Easy', config.language)}`);
+    if (config.mediumCount > 0) counts.push(`${config.mediumCount} ${this.t('Medium', config.language)}`);
+    if (config.hardCount > 0) counts.push(`${config.hardCount} ${this.t('Hard', config.language)}`);
+    
+    doc.setFontSize(14);
+    doc.text(counts.join(', '), width / 2, height * 0.9, { align: 'center' });
+
+    // 2. Content
+    // Add page for Inside Front Cover (start of content)
+    doc.addPage(); 
+    
+    // Call generateContent with existing doc
+    await this.generateContent(config, puzzles, doc);
+
+    // 3. Back Cover (Last Page)
+    doc.addPage();
+    if (fondoImg) {
+      doc.addImage(fondoImg, 'PNG', 0, 0, width, height);
+    } else {
+       doc.setFillColor(200, 200, 200);
+       doc.rect(0, 0, width, height, 'F');
+       doc.setFontSize(16);
+       doc.text(this.t('Back Cover', config.language), width / 2, height / 2, { align: 'center' });
+    }
+
+    return doc;
+  }
+
+  private async generateContent(config: BookConfig, allPuzzles: PuzzleData[], existingDoc?: jsPDF): Promise<jsPDF> {
+    let format: [number, number];
+    if (config.trimSize === '6x9') {
+      format = [6 * 72, 9 * 72];
+    } else {
+      format = [8.5 * 72, 11 * 72];
+    }
+
+    const doc = existingDoc || new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: format
+    });
+
+    // Load Resources (Idempotent-ish)
+    const fontName = await this.loadPlaywriteFont(doc);
+    if (!existingDoc) doc.setFont(fontName, "normal"); // Only set if new, otherwise caller set it? Or set again to be safe.
+    doc.setFont(fontName, "normal"); 
+
     // Load Background Image (fondo.png)
     let fondoImg: HTMLImageElement | null = null;
     try {
       fondoImg = await this.loadImage('/fondo.png');
-    } catch (e) {
-      console.warn("Could not load fondo.png");
-    }
+    } catch (e) { }
 
     const width = format[0];
     const height = format[1];
