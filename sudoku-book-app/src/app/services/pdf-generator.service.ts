@@ -374,6 +374,8 @@ export class PdfGeneratorService {
     return doc;
   }
 
+
+
   private async loadPlaywriteFont(doc: jsPDF): Promise<string> {
     try {
         // Try to load local font file if user provided it
@@ -387,6 +389,7 @@ export class PdfGeneratorService {
                    const base64data = (reader.result as string).split(',')[1];
                    doc.addFileToVFS('PlaywriteRegular.ttf', base64data);
                    doc.addFont('PlaywriteRegular.ttf', 'PlaywriteRegular', 'normal');
+                   doc.addFont('PlaywriteRegular.ttf', 'PlaywriteRegular', 'bold');
                    resolve('PlaywriteRegular');
                 };
                 reader.readAsDataURL(blob);
@@ -417,12 +420,17 @@ export class PdfGeneratorService {
           heightPt = 11 * 72;
       }
 
-      const totalWidth = widthPt * 2 + spineWidth;
+      // Amazon KDP requires a 0.125" (9pt) bleed on all outside edges of the cover
+      const bleedPt = 0.125 * 72;
+      const widthWithBleed = widthPt + bleedPt;
+      
+      const totalWidth = widthWithBleed * 2 + spineWidth;
+      const totalHeight = heightPt + bleedPt * 2;
       
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'pt',
-        format: [totalWidth, heightPt]
+        format: [totalWidth, totalHeight]
       });
 
       // Load Font
@@ -437,27 +445,27 @@ export class PdfGeneratorService {
 
       // Back Cover (Left) - Fondo
       if (fondoImg) {
-        doc.addImage(fondoImg, 'PNG', 0, 0, widthPt, heightPt);
+        doc.addImage(fondoImg, 'PNG', 0, 0, widthWithBleed, totalHeight);
       } else {
         doc.setFillColor(200, 200, 200);
-        doc.rect(0, 0, widthPt, heightPt, 'F');
+        doc.rect(0, 0, widthWithBleed, totalHeight, 'F');
         doc.setFontSize(16);
-        doc.text(this.t('Back Cover', config.language), widthPt / 2, heightPt / 2, { align: 'center' });
+        doc.text(this.t('Back Cover', config.language), widthWithBleed / 2, totalHeight / 2, { align: 'center' });
       }
 
       // Front Cover (Right) - Portada
-      const frontX = widthPt + spineWidth;
+      const frontX = widthWithBleed + spineWidth;
       if (portadaImg) {
-        doc.addImage(portadaImg, 'PNG', frontX, 0, widthPt, heightPt);
+        doc.addImage(portadaImg, 'PNG', frontX, 0, widthWithBleed, totalHeight);
       } else {
         doc.setFillColor(255, 200, 100);
-        doc.rect(frontX, 0, widthPt, heightPt, 'F');
+        doc.rect(frontX, 0, widthWithBleed, totalHeight, 'F');
       }
 
       // Front Cover Title and Counts (Always draw)
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(36);
-      doc.text("SUDOKU COLLECTION", frontX + widthPt / 2, heightPt * 0.15, { align: 'center' });
+      doc.text("SUDOKU COLLECTION", frontX + widthPt / 2, totalHeight * 0.15, { align: 'center' });
 
       const counts: string[] = [];
       if (config.easyCount > 0) counts.push(`${config.easyCount} ${this.t('Easy', config.language)}`);
@@ -465,13 +473,13 @@ export class PdfGeneratorService {
       if (config.hardCount > 0) counts.push(`${config.hardCount} ${this.t('Hard', config.language)}`);
       
       doc.setFontSize(14);
-      doc.text(counts.join(', '), frontX + widthPt / 2, heightPt * 0.9, { align: 'center' });
+      doc.text(counts.join(', '), frontX + widthPt / 2, totalHeight * 0.9, { align: 'center' });
       
       // Spine
       doc.setDrawColor(0);
       doc.setLineDashPattern([5, 5], 0);
-      doc.line(widthPt, 0, widthPt, heightPt);
-      doc.line(frontX, 0, frontX, heightPt);
+      doc.line(widthWithBleed, 0, widthWithBleed, totalHeight);
+      doc.line(frontX, 0, frontX, totalHeight);
       
       return doc;
   }
@@ -488,11 +496,12 @@ export class PdfGeneratorService {
   private drawPageHeader(doc: jsPDF, pageNum: number, width: number, marginInside: number, marginOutside: number, fontName: string): void {
       const isOdd = pageNum % 2 !== 0;
       doc.setFont(fontName, "normal");
+      // Use 36 for Y margin to avoid Amazon text margin issue; don't halve X margins
       doc.setFontSize(10);
       if (isOdd) {
-          doc.text(`${pageNum}`, width - marginOutside / 2, 20, { align: 'right' });
+          doc.text(`${pageNum}`, width - marginOutside, 36, { align: 'right' });
       } else {
-          doc.text(`${pageNum}`, marginOutside / 2, 20, { align: 'left' });
+          doc.text(`${pageNum}`, marginOutside, 36, { align: 'left' });
       }
   }
 
@@ -562,9 +571,9 @@ export class PdfGeneratorService {
                   const isClue = originalPuzzle[r][c] !== 0;
                   
                   if (isClue) {
-                      doc.setFont('Helvetica', 'bold');
+                      doc.setFont(fontName, 'bold');
                   } else {
-                      doc.setFont('Helvetica', 'normal');
+                      doc.setFont(fontName, 'normal');
                   }
                   
                   doc.text(`${val}`, xPos, yPos, { align: 'center' });
