@@ -129,23 +129,38 @@ export class PdfGeneratorService {
       doc.rect(0, 0, width, height, 'F');
     }
 
+    // Establecemos el color de fuente a blanco y el de contorno a negro
+    doc.setTextColor(255, 255, 255);
+    doc.setDrawColor(0, 0, 0);
+    // Establecemos un grosor de línea para el contorno
+    doc.setLineWidth(1.5);
+    
+    // Cambiamos el peso de la fuente a bold
+    doc.setFont(fontName, 'bold');
+    doc.setFontSize(48);
+    // Renderizamos texto con relleno (F) y trazado de borde (S) -> 'FD' o 'fillThenStroke'
+    doc.text('SUDOKU COLLECTION', width / 2, height * 0.15, { align: 'center', renderingMode: 'fillThenStroke' });
+
+    const counts: string[] = [];
+    if (config.easyCount > 0) counts.push(`${config.easyCount} ${this.t('Easy', config.language)}`);
+    if (config.mediumCount > 0) counts.push(`${config.mediumCount} ${this.t('Medium', config.language)}`);
+    if (config.hardCount > 0) counts.push(`${config.hardCount} ${this.t('Hard', config.language)}`);
+
+    // Volvemos a un borde más delgado para el texto pequeño o quitamos el borde (en este caso un borde delgado)
+    doc.setLineWidth(0.5);
+    doc.setFontSize(20);
+    doc.text(counts.join(', '), width / 2, height * 0.9, { align: 'center', renderingMode: 'fillThenStroke' });
+
+    // Restauramos valores para el resto del documento
+    doc.setFont(fontName, 'normal');
+    doc.setLineWidth(1);
+
     // 2. Content
     // Add page for Inside Front Cover (start of content)
     doc.addPage();
 
     // Call generateContent with existing doc
     await this.generateContent(config, puzzles, doc);
-
-    // 3. Back Cover (Last Page)
-    doc.addPage();
-    if (fondoImg) {
-      doc.addImage(fondoImg, 'PNG', 0, 0, width, height);
-    } else {
-      doc.setFillColor(200, 200, 200);
-      doc.rect(0, 0, width, height, 'F');
-      doc.setFontSize(16);
-      doc.text(this.t('Back Cover', config.language), width / 2, height / 2, { align: 'center' });
-    }
 
     return doc;
   }
@@ -414,15 +429,6 @@ export class PdfGeneratorService {
       );
     }
 
-    // 5. Blank Page (Removed)
-    // doc.addPage();
-
-    // 6. Closing Page (Fondo)
-    doc.addPage();
-    if (fondoImg) {
-      doc.addImage(fondoImg, 'PNG', 0, 0, width, height);
-    }
-
     return doc;
   }
 
@@ -503,7 +509,7 @@ export class PdfGeneratorService {
 
     // Back Cover (Left) - Fondo
     if (fondoImg) {
-      doc.addImage(fondoImg, 'PNG', 0, 0, widthWithBleed, totalHeight);
+      doc.addImage(fondoImg, 'JPG', 0, 0, widthWithBleed, totalHeight);
     } else {
       doc.setFillColor(200, 200, 200);
       doc.rect(0, 0, widthWithBleed, totalHeight, 'F');
@@ -522,10 +528,47 @@ export class PdfGeneratorService {
       doc.rect(frontX, 0, widthWithBleed, totalHeight, 'F');
     }
 
-    // NO TEXT OR TEMPLATE CODE AS PER AMAZON SECOND REPORT:
-    // Removed "SUDOKU COLLECTION" and puzzle counts from cover to prevent overlap with user-provided `portada.png`.
+    // Textos portada
+    doc.setTextColor(255, 255, 255);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(1.5);
+    doc.setFont(fontName, 'bold');
+    doc.setFontSize(48);
+    doc.text('SUDOKU COLLECTION', frontX + widthWithBleed / 2, totalHeight * 0.15, {
+      align: 'center',
+      renderingMode: 'fillThenStroke'
+    });
 
-    // Spine
+    const coverCounts: string[] = [];
+    if (config.easyCount > 0)
+      coverCounts.push(`${config.easyCount} ${this.t('Easy', config.language)}`);
+    if (config.mediumCount > 0)
+      coverCounts.push(`${config.mediumCount} ${this.t('Medium', config.language)}`);
+    if (config.hardCount > 0)
+      coverCounts.push(`${config.hardCount} ${this.t('Hard', config.language)}`);
+
+    // Reducimos el grosor del borde para el texto pequeño
+    doc.setLineWidth(0.5);
+    doc.setFontSize(20);
+    doc.text(coverCounts.join(', '), frontX + widthWithBleed / 2, totalHeight * 0.9, {
+      align: 'center',
+      renderingMode: 'fillThenStroke'
+    });
+    
+    // Restaurar fuente para el resto
+    doc.setFont(fontName, 'normal');
+    doc.setLineWidth(1);
+
+    // Spine (Center)
+    if (fondoImg) {
+      // Usamos el fondo a lo largo del lomo
+       doc.addImage(fondoImg, 'PNG', widthWithBleed, 0, spineWidth, totalHeight);
+    } else {
+       doc.setFillColor(200, 200, 200);
+       doc.rect(widthWithBleed, 0, spineWidth, totalHeight, 'F');
+    }
+
+    // Spine Lines
     doc.setDrawColor(0);
     doc.setLineDashPattern([5, 5], 0);
     doc.line(widthWithBleed, 0, widthWithBleed, totalHeight);

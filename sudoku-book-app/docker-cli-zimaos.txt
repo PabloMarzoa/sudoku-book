@@ -1,0 +1,19 @@
+# OPCIÓN 1: Usando Docker CLI desde la terminal (ZimaOS SSH)
+
+# 1. Sitúate en la carpeta donde has copiado el proyecto y construye la imagen:
+docker build -t sudoku-book-app .
+
+# 2. Arranca el contenedor:
+docker run -d \
+  --name sudoku-book-app \
+  -p 8080:80 \
+  --restart unless-stopped \
+  sudoku-book-app
+
+# ------------------------------------------------------------
+# OPCIÓN 2: Usando la interfaz de ZimaOS (CasaOS)
+# 
+# Si el código se encuentra en una carpeta del NAS y tienes docker-compose.yml:
+# 1. Ve a "App" -> Custom Install -> Import
+# 2. Pega el contenido del archivo `docker-compose.yml` que he generado en este proyecto.
+# ZimaOS se encargará de levantar la aplicación usando Nginx en el puerto 8080.
