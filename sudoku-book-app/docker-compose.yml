@@ -1,12 +1,9 @@
-version: '3.8'
+name: sudoku-book
 
 services:
-  sudoku-app:
-    build: .
-    container_name: sudoku-book-app
+  sudoku-book:
+    image: pmarzoa/sudoku-book:latest
+    container_name: sudoku-book
     restart: unless-stopped
     ports:
-      - "8080:80"
-    # Opcional: Si necesitas pasar variables de entorno
-    # environment:
-    #   - NODE_ENV=production
+      - '9093:80'
