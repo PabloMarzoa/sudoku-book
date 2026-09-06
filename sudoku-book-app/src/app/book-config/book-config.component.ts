@@ -76,6 +76,9 @@ import { PdfGeneratorService, BookConfig, PuzzleData } from '../services/pdf-gen
         <button [disabled]="isGenerating" (click)="preview()" class="btn info">
           Preview
         </button>
+        <a href="/sudoku_gen.py" download="sudoku_gen.py" class="btn download-script">
+          Download Python Script
+        </a>
       </div>
       
       <p *ngIf="statusMessage" class="status">{{ statusMessage }}</p>
@@ -112,11 +115,13 @@ import { PdfGeneratorService, BookConfig, PuzzleData } from '../services/pdf-gen
     .actions { display: flex; gap: 1rem; margin-top: 2rem; }
     .btn {
       padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex: 1;
+      text-align: center; text-decoration: none; box-sizing: border-box; display: inline-block;
     }
     .btn:disabled { opacity: 0.7; cursor: not-allowed; }
     .primary { background: #007bff; color: white; }
     .secondary { background: #6c757d; color: white; }
     .info { background: #17a2b8; color: white; }
+    .download-script { background: #28a745; color: white; }
     .status { margin-top: 1rem; color: #28a745; text-align: center; }
     .preview-box { margin-top: 2rem; border-top: 1px solid #ccc; padding-top: 1rem; }
   `]
